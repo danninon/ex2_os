@@ -98,26 +98,33 @@ void case_legal_program(char *argv[], int program_index) {
   }
   //set argv[0]
     strcpy(new_argv[0], argv[program_index]);
-    if (strcmp(argv[program_index], K_HELLO)) {
+    if (strcmp(argv[program_index], K_HELLO) == 0) {
         new_argv[1] = NULL;
-
     } else { // case hello
+     //   fprintf(stderr, "effective index before case_hello_who: %d\n", program_index);
         case_hello_who(new_argv, argv, program_index);
     }
-    fprintf(stderr, "new_argv[0]: %s\n", new_argv[0]);
+   // fprintf(stderr, "new_argv[0]: %s\n", new_argv[0]);
     execve(new_argv[0], new_argv, NULL);
 }
 
 int case_pipe(char *const *argv, int program_index) {
     fprintf(stderr, "case pipe\n");
     program_index = 3;
-    if (strcmp(argv[program_index], "1>") != 0) //can make const
-        redirect(STDOUT_FILENO, argv[program_index]);
-    else if (strcmp(argv[1], "2>"))
-        redirect(STDERR_FILENO, argv[program_index]);
+    int out_file_path_index = program_index - 1;
+    if (strcmp(argv[program_index], "2>&1") == 0  || strcmp(argv[program_index], "1>&2") == 0 ) {//can make const
+        fprintf(stderr, "redirecting stdout && stderr to %s...\n", argv[out_file_path_index]);
+        redirect(STDERR_FILENO, argv[out_file_path_index]);
+        redirect(STDOUT_FILENO, argv[out_file_path_index]);
+    }
+    else if (strcmp(argv[1], "1>") == 0) {
+        fprintf(stderr, "redirecting stdout to %s...\n", argv[out_file_path_index]);
+        redirect(STDOUT_FILENO, argv[out_file_path_index]);
+    }
     else {
-        redirect(STDOUT_FILENO, argv[program_index]);
-        redirect(STDERR_FILENO, argv[program_index]);
+        fprintf(stderr, "redirecting stdout to stderr %s...\n", argv[out_file_path_index]);
+        redirect(STDOUT_FILENO, argv[out_file_path_index]);
+        redirect(STDERR_FILENO, argv[out_file_path_index]);
     }
     return program_index;
 }
@@ -151,13 +158,7 @@ int safe_fork() {
 //}
 
 
-void test(char **const *new_argv, char *path) {
 
-    fprintf(stderr, "Loading...\n");
-    fprintf(stderr, "beep\nnew_argv[0]: %s\n", (*new_argv)[0]);
-    sleep(1);
-    fprintf(stderr, "finished init\nboop\n");
-}
 
 void clean_standard_buffer() {
     setbuf(stderr, NULL);
@@ -168,13 +169,15 @@ void clean_standard_buffer() {
 void case_hello_who(char **new_argv, char *org_argv[], int effective_index) {
     //allocates
     int i;
-    fprintf(stderr, "printing new argv:\n");
+ //   fprintf(stderr, "printing new argv:\n");
+ //   fprintf(stderr, "effective index before set loop:  %d", effective_index);
+
     for ( i = 1; org_argv[effective_index + i]; i++) {
         new_argv[i] = org_argv[effective_index + i];
-        fprintf(stderr, "new_argvg[%d]: %s\n", i, new_argv[i]);
+        //fprintf(stderr, "new_argvg[%d]: %s\n", i, new_argv[i]);
     }
     new_argv[i] = NULL;
-    fprintf(stderr, "new_argv[%d]: %s\n", i, new_argv[i]);
+    //fprintf(stderr, "new_argv[%d]: %s\n", i, new_argv[i]);
 }
 
 void safe_pipe(int *pipefd) {
