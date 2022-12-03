@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <bits/fcntl-linux.h>
 #include <sys/stat.h>
+#include <regex.h>
+#include <stdbool.h>
 
 int open_file(char *name);
 
@@ -20,8 +22,8 @@ void safe_pipe(int *pipefd);
 
 void exec_stud_prog(const char *inp_path, char **new_argv);
 
-void case_hello_who();
 
+#define TXT_REG = "/.*\.txt"
 #define K_HELLO_WHO "hello_who"
 #define K_HELLO "hello"
 #define MAX_NAME_LEN 10
@@ -37,61 +39,124 @@ void case_hello_who();
 //argv[3] = hello_who
 
 
-
-void case_hello(char **new_argv, char *inp_path);
-
-void case_hello_who(char **new_argv, char *names_file);
+void case_hello_who(char **new_argv, char *org_argv[], int effective_index);
 
 void clean_standard_buffer();
 
+void init_new_argv(char *prog_path_to_exec, char ***new_argv);
+
+__attribute__((unused)) void deallocate_son(char **new_argv);
+
+__attribute__((unused)) bool check_text_with_regex(char *word);
+
+int safe_fork();
+
+int case_pipe(char *const *argv, int program_index);
+
+void case_legal_program(char *argv[], int program_index);
+
+void Q2(char *argv[]);
+
+
+void test(char **const *new_argv, char *path);
+
 int main(int argc, char *argv[]) {
+    Q2(argv);
+    return 0;
+
+}
+
+void Q2(char *argv[]) {
+    int program_index = 1; //default no pipe
     clean_standard_buffer();
 
+
+    int pid = safe_fork();
+    if (pid == 0) {
+        fprintf(stderr, "child's pid: %d parent pid: %d\n", getpid(), getppid());
+        //makes the next if with strcmp instead with || between
+        if (strcmp(argv[1], "1>") == 0 || strcmp(argv[1], "2>") == 0 || strcmp(argv[1], "2>&1") == 0) {
+            program_index =  case_pipe(argv, program_index); //3 + do redirections on both ends
+        }
+        if ((strcmp(argv[program_index], K_HELLO_WHO) != 0) && strcmp(argv[program_index], K_HELLO) != 0)
+            exit_error_msg();
+        //legal
+        //just used for convenience since many pointers are used, gets set at init
+        case_legal_program(argv, program_index);
+
+    } else {
+        fprintf(stderr, "father's pid: %d\n", getpid());
+        wait(NULL);
+    }
+}
+
+void case_legal_program(char *argv[], int program_index) {
+    //init new argv
+    char **new_argv = malloc(sizeof(char*)*(MAX_ARGS+1));
+     for (int i = 0; i < MAX_ARGS+1; ++i) {
+        new_argv[i] = malloc(sizeof(char)*MAX_ARG_LEN);
+  }
+  //set argv[0]
+    strcpy(new_argv[0], argv[program_index]);
+    if (strcmp(argv[program_index], K_HELLO)) {
+        new_argv[1] = NULL;
+
+    } else { // case hello
+        case_hello_who(new_argv, argv, program_index);
+    }
+    fprintf(stderr, "new_argv[0]: %s\n", new_argv[0]);
+    execve(new_argv[0], new_argv, NULL);
+}
+
+int case_pipe(char *const *argv, int program_index) {
+    fprintf(stderr, "case pipe\n");
+    program_index = 3;
+    if (strcmp(argv[program_index], "1>") != 0) //can make const
+        redirect(STDOUT_FILENO, argv[program_index]);
+    else if (strcmp(argv[1], "2>"))
+        redirect(STDERR_FILENO, argv[program_index]);
+    else {
+        redirect(STDOUT_FILENO, argv[program_index]);
+        redirect(STDERR_FILENO, argv[program_index]);
+    }
+    return program_index;
+}
+
+int safe_fork() {
     int pid = fork();
     if (pid == -1) {
         exit_error_msg();
     }
-
-    char **new_argv = NULL;
-
-    char *inp_path = argv[1];
-
-    if (pid == 0) { //son goes brrrr
-        if (strcmp(inp_path, K_HELLO) == 0) { //argv == {"K_HELLO"}
-            case_hello(new_argv, inp_path);
-        } //only the name is needed for the at argv
-        else if (strcmp(inp_path, K_HELLO_WHO) == 0) //only operate on these two
-        {
-            case_hello_who(new_argv, inp_path);
-        }//need to read txt file to and each line insert to argv (use pipe)
-        else //not valid program(assignment requested)
-            exit_error_msg();
-
-        //redirect if needed
-        //case invalid input
-        if (argc != 4 && argc != 2)
-            exit_error_msg();
-            //case redirect ( 3 parameters )
-        else if (argc == 4) { //add redir
-            if (pid == 0) {
-                //case 3 parameters
-                if (strcmp(inp_path, "1>") != 0 && strcmp(argv[1], "2>&1") && strcmp(argv[1], "1>") != 0)
-                    exit_error_msg();
-                if (strcmp(inp_path, "1>") == 0 || strcmp(argv[1], "2>&1"))
-                    redirect(STDERR_FILENO, inp_path);
-                if (strcmp(inp_path, "2>") == 0 || strcmp(argv[1], "2>&1"))
-                    redirect(STDOUT_FILENO, inp_path); //try with pipes
-            }
-
-        }
-        //runs program
-        execve(new_argv[0], new_argv, NULL); //will be freed since no one is pointering it
-    } else {
-        wait(NULL); //dad goes zZzZz
+    return pid;
+}
+//
+//void init_new_argv(char *prog_path_to_exec, char ***new_argv) {
+//    *new_argv = malloc(MAX_ARGS * sizeof(char *));
+//    if (*new_argv == NULL) {
+//        exit_error_msg();
+//    }
+//    (*new_argv)[0] = prog_path_to_exec;
+//    for (int i = 1; i < MAX_ARGS; i++) {
+//        (*new_argv)[i] = NULL;
+//    }
+//
+//    fprintf(stderr, "going to load: %s to new_argv[0]\n", prog_path_to_exec);
+//    fprintf(stderr, "size of allocated argv: %ld\n\n\n", (**new_argv));
+//    sleep(1);
+//    fprintf(stderr,"\n\nsize of allocated: %ld\n", sizeof(*new_argv));
+//    sleep(1);
+//    char res = strcpy(**new_argv, prog_path_to_exec);
+//   fprintf("%c", &res);
+//    fprintf(stderr, "new_argv[0]: %s\n", (*new_argv)[0]);
+//}
 
 
-    }
-    return 0;
+void test(char **const *new_argv, char *path) {
+
+    fprintf(stderr, "Loading...\n");
+    fprintf(stderr, "beep\nnew_argv[0]: %s\n", (*new_argv)[0]);
+    sleep(1);
+    fprintf(stderr, "finished init\nboop\n");
 }
 
 void clean_standard_buffer() {
@@ -100,40 +165,16 @@ void clean_standard_buffer() {
     setbuf(stdin, NULL);
 }
 
-
-void case_hello(char **argv, char *prog_name) {
-    argv = calloc(2, sizeof(MAX_ARG_LEN)); //could be made smaller, not bothering.
-    strcpy(argv[0],K_HELLO_WHO);
-}
-
-FILE *open_read(char *file_path) {
-    FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) {
-        exit_error_msg();
-    }
-    return fp;
-}
-
-void case_hello_who(char **new_argv, char *file_path) {
+void case_hello_who(char **new_argv, char *org_argv[], int effective_index) {
     //allocates
-    new_argv = malloc(sizeof(char));
-    for (int i = 0; i < FILE_MAX_STUDENTS; i++) {
-        new_argv[i] = malloc(MAX_NAME_LEN);
+    int i;
+    fprintf(stderr, "printing new argv:\n");
+    for ( i = 1; org_argv[effective_index + i]; i++) {
+        new_argv[i] = org_argv[effective_index + i];
+        fprintf(stderr, "new_argvg[%d]: %s\n", i, new_argv[i]);
     }
-    strcpy(new_argv[0],K_HELLO_WHO);
-    char line_buf[MAX_NAME_LEN + 1];
-
-    /* Open the file for reading */
-    FILE *in_fp = open_read(file_path);
-    int i = 1;
-    //clean buffer pls
-    while (fgets(line_buf, MAX_NAME_LEN, in_fp) != NULL) {
-        strcpy(new_argv[i++], line_buf);
-        // ((ch = getc(in_fp)) != EOF) && (ch != '\n')
-        // fseek(in_fp, -1, SEEK_CUR); //returns effect of getc (removes from line_buf)
-        //get next student name
-    }
-    fclose(in_fp);
+    new_argv[i] = NULL;
+    fprintf(stderr, "new_argv[%d]: %s\n", i, new_argv[i]);
 }
 
 void safe_pipe(int *pipefd) {
@@ -154,7 +195,6 @@ void exit_error_msg() {
 }
 
 
-
 int open_file(char *name) {
     int fd;
     fd = open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -166,3 +206,4 @@ int open_file(char *name) {
     fprintf(stderr, "opened file %s, file descriptor is: %d\n", name, fd);
     return (fd);
 }
+
