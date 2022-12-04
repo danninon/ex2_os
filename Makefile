@@ -35,6 +35,8 @@ test: $(PROG)
 	cat t2.txt
 	./q1_ex2 "2>" t2.txt hello_who 
 	cat t2.txt
+	./q1_ex2 this_file_does_not_exist_lol
+
 
 
   
