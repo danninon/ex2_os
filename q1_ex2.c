@@ -69,7 +69,6 @@ int main(int argc, char *argv[]) {
 void Q2(char *argv[]) {
     int program_index = 1; //default no pipe
     clean_standard_buffer();
-
     int pid = safe_fork();
     if (pid == 0) { //son
         fprintf(stderr, "child's pid: %d parent pid: %d\n", getpid(), getppid());
