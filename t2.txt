@@ -1,0 +1,2 @@
+opened file t2.txt
+program: hello_who, pid = 4733 greeted 0 people.
