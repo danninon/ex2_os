@@ -70,9 +70,8 @@ void Q2(char *argv[]) {
     int program_index = 1; //default no pipe
     clean_standard_buffer();
 
-
     int pid = safe_fork();
-    if (pid == 0) {
+    if (pid == 0) { //son
         fprintf(stderr, "child's pid: %d parent pid: %d\n", getpid(), getppid());
         //makes the next if with strcmp instead with || between
         if (strcmp(argv[1], "1>") == 0 || strcmp(argv[1], "2>") == 0 || strcmp(argv[1], "2>&1") == 0) {
@@ -84,7 +83,7 @@ void Q2(char *argv[]) {
         //just used for convenience since many pointers are used, gets set at init
         case_legal_program(argv, program_index);
 
-    } else {
+    } else { //father
         fprintf(stderr, "father's pid: %d\n", getpid());
         wait(NULL);
     }
